@@ -5317,37 +5317,62 @@ AdjustDamageForMoveType:
 ; the result is stored in [wTypeEffectiveness]
 ; as far is can tell, this is only used once in some AI code to help decide which move to use
 AIGetTypeEffectiveness:
-	ld a, [wEnemyMoveType]
-	ld d, a                    ; d = type of enemy move
-	ld hl, wBattleMonType
-	ld b, [hl]                 ; b = type 1 of player's pokemon
-	inc hl
-	ld c, [hl]                 ; c = type 2 of player's pokemon
-	; initialize to neutral effectiveness
-	ld a, $10 ; bug: should be EFFECTIVE (10)
-	ld [wTypeEffectiveness], a
-	ld hl, TypeEffects
+    ld a, [wEnemyMoveType]
+    ld d, a                    ; d = type of enemy move
+    ld hl, wBattleMonType
+    ld b, [hl]                 ; b = type 1 of player's pokemon
+    inc hl
+    ld c, [hl]                 ; c = type 2 of player's pokemon
+
+    ; initialize to neutral effectiveness
+    ld a, $10                  ; set neutral effectiveness as default
+    ld [wTypeEffectiveness], a
+    ld hl, TypeEffects
+
 .loop
-	ld a, [hli]
-	cp $ff
-	ret z
-	cp d                      ; match the type of the move
-	jr nz, .nextTypePair1
-	ld a, [hli]
-	cp b                      ; match with type 1 of pokemon
-	jr z, .done
-	cp c                      ; or match with type 2 of pokemon
-	jr z, .done
-	jr .nextTypePair2
+    ld a, [hli]
+    cp $ff                     ; check if at end of type effectiveness table
+    ret z                      ; exit if no match found
+    cp d                       ; match the type of the move
+    jr nz, .nextTypePair1
+
+    ld a, [hli]
+    cp b                       ; check against type 1 of player's Pokemon
+    jr z, .setEffectiveness
+    cp c                       ; check against type 2 of player's Pokemon
+    jr z, .setEffectiveness
+
+    jr .nextTypePair2
+
 .nextTypePair1
-	inc hl
+    inc hl                     ; skip current entry
 .nextTypePair2
-	inc hl
-	jr .loop
+    inc hl
+    jr .loop
+
+.setEffectiveness
+    ld a, [hl]                 ; get the effectiveness multiplier
+    ld [wTypeEffectiveness], a ; store effectiveness in wTypeEffectiveness
+
+    ; Check for super-effective or not very effective moves
+    cp $20                     ; if 2x effectiveness (super-effective)
+    jr nz, .checkNotEffective
+    ; Double encouragement for super-effective move
+    ld a, $05                  ; encourage super-effective moves
+    add [wTypeEffectiveness]
+    ld [wTypeEffectiveness], a
+    ret
+
+.checkNotEffective
+    cp $05                     ; if less than 1x effectiveness (not very effective)
+    jr nz, .done
+    ; Discourage not very effective moves
+    ld a, [wTypeEffectiveness]
+    sub $05                    ; discourage slightly
+    ld [wTypeEffectiveness], a
 .done
-	ld a, [hl]
-	ld [wTypeEffectiveness], a ; store damage multiplier
-	ret
+    ret
+
 
 INCLUDE "data/types/type_matchups.asm"
 
