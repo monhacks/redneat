@@ -5359,7 +5359,7 @@ AIGetTypeEffectiveness:
     jr nz, .checkNotEffective
     ; Double encouragement for super-effective move
     ld a, $05                  ; encourage super-effective moves
-    add [wTypeEffectiveness]
+    h1 [wTypeEffectiveness]
     ld [wTypeEffectiveness], a
     ret
 
