@@ -5357,9 +5357,9 @@ AIGetTypeEffectiveness:
     ; Check for super-effective or not very effective moves
     cp $20                     ; if 2x effectiveness (super-effective)
     jr nz, .checkNotEffective
-    ; Double encouragement for super-effective move
-    ld a, $05                  ; encourage super-effective moves
-    add [wTypeEffectiveness]
+    ; Double encouragement for super-effective moves
+    ld a, [wTypeEffectiveness]
+    add a, $05                 ; encourage super-effective moves
     ld [wTypeEffectiveness], a
     ret
 
@@ -5368,7 +5368,7 @@ AIGetTypeEffectiveness:
     jr nz, .done
     ; Discourage not very effective moves
     ld a, [wTypeEffectiveness]
-    sub $05                    ; discourage slightly
+    sub a, $05                 ; discourage slightly
     ld [wTypeEffectiveness], a
 .done
     ret
