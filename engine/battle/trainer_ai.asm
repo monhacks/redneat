@@ -666,30 +666,45 @@ AIUseDireHit: ; unused
 	jp AIPrintItemUse
 
 AICheckIfHPBelowFraction:
-; return carry if enemy trainer's current HP is below 1 / a of the maximum
-	ldh [hDivisor], a
-	ld hl, wEnemyMonMaxHP
-	ld a, [hli]
-	ldh [hDividend], a
-	ld a, [hl]
-	ldh [hDividend + 1], a
-	ld b, 2
-	call Divide
-	ldh a, [hQuotient + 3]
-	ld c, a
-	ldh a, [hQuotient + 2]
-	ld b, a
-	ld hl, wEnemyMonHP + 1
-	ld a, [hld]
-	ld e, a
-	ld a, [hl]
-	ld d, a
-	ld a, d
-	sub b
-	ret nz
-	ld a, e
-	sub c
-	ret
+    ; Return carry if enemy trainer's current HP is below 1 / a of the maximum
+    ldh [hDivisor], a
+    ld hl, wEnemyMonMaxHP
+    ld a, [hli]
+    ldh [hDividend], a
+    ld a, [hl]
+    ldh [hDividend + 1], a
+    ld b, 2
+    call Divide
+    ldh a, [hQuotient + 3]
+    ld c, a
+    ldh a, [hQuotient + 2]
+    ld b, a
+    ld hl, wEnemyMonHP + 1
+    ld a, [hld]
+    ld e, a
+    ld a, [hl]
+    ld d, a
+    ld a, d
+    sub b
+    ret nz                  ; return if current HP > threshold
+    ld a, e
+    sub c
+    ret                     ; return if current HP > threshold
+
+    ; Check if trainer is a "tough" trainer
+    ld a, [wTrainerClass]   ; Load the current trainer class
+    cp ELITE_FOUR_CLASS     ; Compare to Elite Four class
+    jr z, .activateDesperation
+    cp GYM_LEADER_CLASS     ; Compare to Gym Leader class
+    jr z, .activateDesperation
+    ret                     ; If not tough trainer, exit
+
+.activateDesperation:
+    ; Enter desperation mode logic (encourage offensive moves)
+    ld a, $05               ; Encourage aggressive moves by setting a high weight
+    ld [wAILayer2Encouragement], a
+    scf                     ; Set carry flag to indicate desperation mode
+    ret
 
 AIUseXAttack:
 	ld b, $A
