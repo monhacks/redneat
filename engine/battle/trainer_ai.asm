@@ -691,13 +691,7 @@ AICheckIfHPBelowFraction:
     sub c
     ret                     ; return if current HP > threshold
 
-    ; Check if trainer is a "tough" trainer
-    ld a, [wTrainerClass]   ; Load the current trainer class
-    cp ELITE_FOUR_CLASS     ; Compare to Elite Four class
     jr z, .activateDesperation
-    cp GYM_LEADER_CLASS     ; Compare to Gym Leader class
-    jr z, .activateDesperation
-    ret                     ; If not tough trainer, exit
 
 .activateDesperation:
     ; Enter desperation mode logic (encourage offensive moves)
