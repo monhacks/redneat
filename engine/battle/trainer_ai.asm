@@ -111,46 +111,55 @@ AIMoveChoiceModificationFunctionPointers:
 
 ; discourages moves that cause no damage but only a status ailment if player's mon already has one
 AIMoveChoiceModification1:
-	ld a, [wBattleMonStatus]
-	and a
-	ret z ; return if no status ailment on player's mon
-	ld hl, wBuffer - 1 ; temp move selection array (-1 byte offset)
-	ld de, wEnemyMonMoves ; enemy moves
-	ld b, NUM_MOVES + 1
+    ld a, [wBattleMonStatus]
+    and a
+    ret z                     ; return if no status ailment on player's mon
+    ld hl, wBuffer - 1        ; temp move selection array (-1 byte offset)
+    ld de, wEnemyMonMoves     ; enemy moves
+    ld b, NUM_MOVES + 1
 .nextMove
-	dec b
-	ret z ; processed all 4 moves
-	inc hl
-	ld a, [de]
-	and a
-	ret z ; no more moves in move set
-	inc de
-	call ReadMove
-	ld a, [wEnemyMovePower]
-	and a
-	jr nz, .nextMove
-	ld a, [wEnemyMoveEffect]
-	push hl
-	push de
-	push bc
-	ld hl, StatusAilmentMoveEffects
-	ld de, 1
-	call IsInArray
-	pop bc
-	pop de
-	pop hl
-	jr nc, .nextMove
-	ld a, [hl]
-	add $5 ; heavily discourage move
-	ld [hl], a
-	jr .nextMove
+    dec b
+    ret z                     ; processed all 4 moves
+    inc hl
+    ld a, [de]
+    and a
+    ret z                     ; no more moves in move set
+    inc de
+    call ReadMove
+    ld a, [wEnemyMovePower]
+    and a
+    jr nz, .nextMove          ; skip if move has power (is damaging)
+
+    ; Check if the move effect is a status effect
+    ld a, [wEnemyMoveEffect]
+    push hl
+    push de
+    push bc
+    ld hl, StatusAilmentMoveEffects
+    ld de, 1
+    call IsInArray
+    pop bc
+    pop de
+    pop hl
+    jr nc, .nextMove          ; continue if move effect is not a status ailment
+
+    ; Check if the status effect matches player's current status
+    ld a, [wBattleMonStatus]
+    ld hl, wEnemyMoveEffect
+    cp [hl]
+    jr nz, .differentStatus   ; if different, skip discouragement
+    ld a, [hl]
+    add $5                    ; heavily discourage move if status is redundant
+    ld [hl], a
+.differentStatus
+    jr .nextMove              ; move to the next move in the list
 
 StatusAilmentMoveEffects:
-	db EFFECT_01 ; unused sleep effect
-	db SLEEP_EFFECT
-	db POISON_EFFECT
-	db PARALYZE_EFFECT
-	db -1 ; end
+    db EFFECT_01              ; unused sleep effect
+    db SLEEP_EFFECT
+    db POISON_EFFECT
+    db PARALYZE_EFFECT
+    db -1                     ; end
 
 ; slightly encourage moves with specific effects.
 ; in particular, stat-modifying moves and other move effects
