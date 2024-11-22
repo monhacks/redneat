@@ -494,10 +494,11 @@ AIUseFullRestore:
 	jr AIPrintItemUseAndUpdateHPBar
 
 AIUsePotion:
-; enemy trainer heals his monster with a potion
-	ld a, POTION
-	ld b, 20
-	jr AIRecoverHP
+    ; Check if HP is below 50% before using a healing item
+    ld a, 2
+    call AICheckIfHPBelowFraction
+    ret nc ; don’t use potion if HP is above threshold
+    ; proceed with existing potion usage
 
 AIUseSuperPotion:
 ; enemy trainer heals his monster with a super potion
@@ -569,6 +570,12 @@ AISwitchIfEnoughMons:
 	ld d, 0 ; keep count of unfainted monsters
 
 	; count how many monsters haven't fainted yet
+
+        ; Check effectiveness of current Pokémon's type
+        callfar AIGetTypeEffectiveness
+        ld a, [wTypeEffectiveness]
+        cp $10 ; if effectiveness is very low, encourage switch
+        jr c, .encourageSwitch
 .loop
 	ld a, [hli]
 	ld b, a
@@ -620,6 +627,10 @@ SwitchEnemyMon:
 	ret z
 	scf
 	ret
+
+.encourageSwitch
+    ; switch if the current Pokémon is at a disadvantage
+    jp SwitchEnemyMon
 
 AIBattleWithdrawText:
 	text_far _AIBattleWithdrawText
