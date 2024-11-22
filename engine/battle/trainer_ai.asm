@@ -596,6 +596,9 @@ AISwitchIfEnoughMons:
 	jp nc, SwitchEnemyMon
 	and a
 	ret
+.encourageSwitch
+    ; switch if the current Pokémon is at a disadvantage
+    jp SwitchEnemyMon
 
 SwitchEnemyMon:
 
