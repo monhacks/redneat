@@ -330,129 +330,6 @@ TrainerAI:
 
 INCLUDE "data/trainers/ai_pointers.asm"
 
-JugglerAI:
-	cp 25 percent + 1
-	ret nc
-	jp AISwitchIfEnoughMons
-
-BlackbeltAI:
-	cp 13 percent - 1
-	ret nc
-	jp AIUseXAttack
-
-GiovanniAI:
-	cp 25 percent + 1
-	ret nc
-	jp AIUseGuardSpec
-
-CooltrainerMAI:
-	cp 25 percent + 1
-	ret nc
-	jp AIUseXAttack
-
-CooltrainerFAI:
-	; The intended 25% chance to consider switching will not apply.
-	; Uncomment the line below to fix this.
-	cp 25 percent + 1
-	; ret nc
-	ld a, 10
-	call AICheckIfHPBelowFraction
-	jp c, AIUseHyperPotion
-	ld a, 5
-	call AICheckIfHPBelowFraction
-	ret nc
-	jp AISwitchIfEnoughMons
-
-BrockAI:
-; if his active monster has a status condition, use a full heal
-	ld a, [wEnemyMonStatus]
-	and a
-	ret z
-	jp AIUseFullHeal
-
-MistyAI:
-	cp 25 percent + 1
-	ret nc
-	jp AIUseXDefend
-
-LtSurgeAI:
-	cp 25 percent + 1
-	ret nc
-	jp AIUseXSpeed
-
-ErikaAI:
-	cp 50 percent + 1
-	ret nc
-	ld a, 10
-	call AICheckIfHPBelowFraction
-	ret nc
-	jp AIUseSuperPotion
-
-KogaAI:
-	cp 25 percent + 1
-	ret nc
-	jp AIUseXAttack
-
-BlaineAI:
-	cp 25 percent + 1
-	ret nc
-	jp AIUseSuperPotion
-
-SabrinaAI:
-	cp 25 percent + 1
-	ret nc
-	ld a, 10
-	call AICheckIfHPBelowFraction
-	ret nc
-	jp AIUseHyperPotion
-
-Rival2AI:
-	cp 13 percent - 1
-	ret nc
-	ld a, 5
-	call AICheckIfHPBelowFraction
-	ret nc
-	jp AIUsePotion
-
-Rival3AI:
-	cp 13 percent - 1
-	ret nc
-	ld a, 5
-	call AICheckIfHPBelowFraction
-	ret nc
-	jp AIUseFullRestore
-
-LoreleiAI:
-	cp 50 percent + 1
-	ret nc
-	ld a, 5
-	call AICheckIfHPBelowFraction
-	ret nc
-	jp AIUseSuperPotion
-
-BrunoAI:
-	cp 25 percent + 1
-	ret nc
-	jp AIUseXDefend
-
-AgathaAI:
-	cp 8 percent
-	jp c, AISwitchIfEnoughMons
-	cp 50 percent + 1
-	ret nc
-	ld a, 4
-	call AICheckIfHPBelowFraction
-	ret nc
-	jp AIUseSuperPotion
-
-LanceAI:
-	cp 50 percent + 1
-	ret nc
-	ld a, 5
-	call AICheckIfHPBelowFraction
-	ret nc
-	jp AIUseHyperPotion
-
 GenericAI:
 	and a ; clear carry
 	ret
@@ -494,20 +371,33 @@ AIUseFullRestore:
 	jr AIPrintItemUseAndUpdateHPBar
 
 AIUsePotion:
-    ; Check if HP is below 50% before using a healing item
-    ld a, 2
-    call AICheckIfHPBelowFraction
-    ret nc ; don’t use potion if HP is above threshold
-    ; proceed with existing potion usage
+        ; Check if HP is below 50% before using a healing item
+        ld a, 2
+        call AICheckIfHPBelowFraction
+        ret nc ; don’t use potion if HP is above threshold
+        ; proceed with existing potion usage
+        ld a, POTION
+	ld b, 20
+	jr AIRecoverHP
 
 AIUseSuperPotion:
 ; enemy trainer heals his monster with a super potion
+        ; Check if HP is below 50% before using a healing item
+        ld a, 2
+        call AICheckIfHPBelowFraction
+        ret nc ; don’t use potion if HP is above threshold
+        ; proceed with existing potion usage
 	ld a, SUPER_POTION
 	ld b, 50
 	jr AIRecoverHP
 
 AIUseHyperPotion:
 ; enemy trainer heals his monster with a hyper potion
+        ; Check if HP is below 50% before using a healing item
+        ld a, 2
+        call AICheckIfHPBelowFraction
+        ret nc ; don’t use potion if HP is above threshold
+        ; proceed with existing potion usage
 	ld a, HYPER_POTION
 	ld b, 200
 	; fallthrough
