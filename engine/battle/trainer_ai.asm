@@ -1,113 +1,118 @@
 ; creates a set of moves that may be used and returns its address in hl
 ; unused slots are filled with 0, all used slots may be chosen with equal probability
 AIEnemyTrainerChooseMoves:
-	call Random
-	and %00000011 ; adjust mask to control probability
-	jp z, .useRandomMove ; use a random move 25% of the time
-	ld a, $a
-	ld hl, wBuffer ; init temporary move selection array. Only the moves with the lowest numbers are chosen in the end
-	ld [hli], a   ; move 1
-	ld [hli], a   ; move 2
-	ld [hli], a   ; move 3
-	ld [hl], a    ; move 4
-	ld a, [wEnemyDisabledMove] ; forbid disabled move (if any)
-	swap a
-	and $f
-	jr z, .noMoveDisabled
-	ld hl, wBuffer
-	dec a
-	ld c, a
-	ld b, $0
-	add hl, bc    ; advance pointer to forbidden move
-	ld [hl], $50  ; forbid (highly discourage) disabled move
+    ; Add randomness for less predictable behavior
+    call Random
+    and %00000011          ; 25% chance to choose randomly
+    jp z, .useRandomMove   ; Jump to random move selection
+    
+    ; Initialize move array
+    ld a, $a
+    ld hl, wBuffer         ; Temporary buffer
+    ld [hli], a            ; Move 1
+    ld [hli], a            ; Move 2
+    ld [hli], a            ; Move 3
+    ld [hl], a             ; Move 4
+    
+    ; Handle disabled moves
+    ld a, [wEnemyDisabledMove]
+    swap a
+    and $f
+    jr z, .noMoveDisabled
+    ld hl, wBuffer
+    dec a
+    ld c, a
+    ld b, $0
+    add hl, bc
+    ld [hl], $50           ; Discourage disabled move
 .noMoveDisabled
-	ld hl, TrainerClassMoveChoiceModifications
-	ld a, [wTrainerClass]
-	ld b, a
-.loopTrainerClasses
-	dec b
-	jr z, .readTrainerClassData
-.loopTrainerClassData
-	ld a, [hli]
-	and a
-	jr nz, .loopTrainerClassData
-	jr .loopTrainerClasses
-.readTrainerClassData
-	ld a, [hl]
-	and a
-	jp z, .useOriginalMoveSet
-	push hl
-.nextMoveChoiceModification
-	pop hl
-	ld a, [hli]
-	and a
-	jr z, .loopFindMinimumEntries
-	push hl
-	ld hl, AIMoveChoiceModificationFunctionPointers
-	dec a
-	add a
-	ld c, a
-	ld b, 0
-	add hl, bc    ; skip to pointer
-	ld a, [hli]   ; read pointer into hl
-	ld h, [hl]
-	ld l, a
-	ld de, .nextMoveChoiceModification  ; set return address
-	push de
-	jp hl         ; execute modification function
-.loopFindMinimumEntries ; all entries will be decremented sequentially until one of them is zero
-	ld hl, wBuffer  ; temp move selection array
-	ld de, wEnemyMonMoves  ; enemy moves
-	ld c, NUM_MOVES
-.loopDecrementEntries
-	ld a, [de]
-	inc de
-	and a
-	jr z, .loopFindMinimumEntries
-	dec [hl]
-	jr z, .minimumEntriesFound
-	inc hl
-	dec c
-	jr z, .loopFindMinimumEntries
-	jr .loopDecrementEntries
-.minimumEntriesFound
-	ld a, c
-.loopUndoPartialIteration ; undo last (partial) loop iteration
-	inc [hl]
-	dec hl
-	inc a
-	cp NUM_MOVES + 1
-	jr nz, .loopUndoPartialIteration
-	ld hl, wBuffer  ; temp move selection array
-	ld de, wEnemyMonMoves  ; enemy moves
-	ld c, NUM_MOVES
-.filterMinimalEntries ; all minimal entries now have value 1. All other slots will be disabled (move set to 0)
-	ld a, [de]
-	and a
-	jr nz, .moveExisting
-	ld [hl], a
-.moveExisting
-	ld a, [hl]
-	dec a
-	jr z, .slotWithMinimalValue
-	xor a
-	ld [hli], a     ; disable move slot
-	jr .next
-.slotWithMinimalValue
-	ld a, [de]
-	ld [hli], a     ; enable move slot
-.next
-	inc de
-	dec c
-	jr nz, .filterMinimalEntries
-	ld hl, wBuffer    ; use created temporary array as move set
-	ret
-.useOriginalMoveSet
-	ld hl, wEnemyMonMoves    ; use original move set
-	ret
-.useRandomMove
-    ld a, [hl] ; select a move randomly
-    jp hl
+
+    ; Apply trainer-specific logic
+    ld hl, TrainerClassMoveChoiceModifications
+    ld a, [wTrainerClass]
+    call ApplyTrainerSpecificLogic
+
+    ; Filter moves based on situational factors
+    call FilterMovesByEffectiveness
+    call FilterMovesByStatus
+
+    ; If all else fails, use original move set
+.useOriginalMoveSet:
+    ld hl, wEnemyMonMoves
+    ret
+
+.useRandomMove:
+    ld a, [wEnemyMonMoves]
+    ld hl, wBuffer
+    ld [hl], a             ; Select a move randomly
+    ret
+
+FilterMovesByEffectiveness:
+    ld hl, wBuffer         ; Temp move selection array
+    ld de, wEnemyMonMoves  ; Original move list
+    ld c, NUM_MOVES
+
+.filterLoop:
+    ld a, [de]
+    inc de
+    and a
+    jr z, .nextMove        ; Skip empty slots
+
+    ; Check type effectiveness
+    call AIGetTypeEffectiveness
+    ld a, [wTypeEffectiveness]
+    cp $20
+    jr z, .superEffective
+    cp $05
+    jr c, .notEffective
+
+.superEffective:
+    dec [hl]               ; Encourage super-effective moves
+    jr .nextMove
+
+.notEffective:
+    inc [hl]               ; Discourage ineffective moves
+
+.nextMove:
+    inc hl
+    dec c
+    jr nz, .filterLoop
+    ret
+
+FilterMovesByStatus:
+    ld hl, wBuffer         ; Temp move selection array
+    ld de, wEnemyMonMoves  ; Original move list
+    ld b, NUM_MOVES
+
+.checkStatus:
+    dec b
+    ret z                  ; All moves processed
+    inc hl
+    ld a, [de]
+    and a
+    ret z                  ; No more moves
+    inc de
+
+    ; Check if player's Pokémon has a status
+    ld a, [wBattleMonStatus]
+    and a
+    jr z, .nextMove         ; Skip if no status condition
+
+    ; Check if move applies a redundant status
+    ld a, [wEnemyMoveEffect]
+    ld hl, StatusAilmentMoveEffects
+    call IsInArray
+    jr nc, .nextMove        ; Skip non-status moves
+
+    ; Discourage redundant status effects
+    ld a, [wBattleMonStatus]
+    cp [hl]
+    jr nz, .nextMove
+    inc [hl]
+
+.nextMove:
+    jr .checkStatus
+
 
 AIMoveChoiceModificationFunctionPointers:
 	dw AIMoveChoiceModification1
