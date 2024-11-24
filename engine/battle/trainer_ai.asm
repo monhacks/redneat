@@ -1,4 +1,4 @@
-; Group constants
+; Define Trainer Groups
 GYM_LEADER_CLASS_START  equ $10  ; Starting index for Gym Leaders
 GYM_LEADER_CLASS_END    equ $1F  ; Ending index for Gym Leaders
 ELITE_FOUR_CLASS_START  equ $20  ; Starting index for Elite Four
@@ -7,7 +7,7 @@ ELITE_FOUR_CLASS_END    equ $24  ; Ending index for Elite Four
 GYM_LEADER_GROUP        equ $01
 ELITE_FOUR_GROUP        equ $02
 
-; Trainer classes (example)
+; Define Trainer Classes (Example)
 TrainerClasses:
     db $00 ; Youngster
     db $01 ; Lass
@@ -22,6 +22,20 @@ TrainerClasses:
     db $22 ; Agatha
     db $23 ; Lance
     db $24 ; Champion (Elite Four end)
+
+; Status Effect Definitions
+SLEEP_EFFECT  equ $01
+POISON_EFFECT equ $02
+PARALYZE_EFFECT equ $03
+FREEZE_EFFECT equ $04
+
+StatusAilmentMoveEffects:
+    db SLEEP_EFFECT
+    db POISON_EFFECT
+    db PARALYZE_EFFECT
+    db FREEZE_EFFECT
+    db -1                 ; End of list
+
 
 CheckTrainerGroup:
     ; Load the current trainer class
@@ -139,6 +153,7 @@ FilterMovesByEffectiveness:
     jr nz, .filterLoop
     ret
 
+
 FilterMovesByStatus:
     ld hl, wBuffer         ; Temp move selection array
     ld de, wEnemyMonMoves  ; Original move list
@@ -173,6 +188,7 @@ FilterMovesByStatus:
 .nextMove:
     jr .checkStatus
 
+
 EncourageBalancedStrategy:
     ld hl, wBuffer
     ld c, NUM_MOVES
@@ -204,13 +220,6 @@ EncourageOffensiveMoves:
     dec c
     jr nz, .offensiveLoop
     ret
-
-StatusAilmentMoveEffects:
-    db SLEEP_EFFECT
-    db POISON_EFFECT
-    db PARALYZE_EFFECT
-    db FREEZE_EFFECT
-    db -1                 ; End of list
 
 
 
