@@ -7,6 +7,8 @@ DEF ELITE_FOUR_CLASS_END    equ $24  ; Ending index for Elite Four
 DEF GYM_LEADER_GROUP        equ $01
 DEF ELITE_FOUR_GROUP        equ $02
 
+INCLUDE "data/trainers/move_choices.asm"
+
 INCLUDE "data/trainers/pic_pointers_money.asm"
 
 INCLUDE "data/trainers/names.asm"
