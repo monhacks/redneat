@@ -3,7 +3,7 @@
 AIEnemyTrainerChooseMoves:
 	call Random
 	and %00000011 ; adjust mask to control probability
-	jr z, .useRandomMove ; use a random move 25% of the time
+	jp z, .useRandomMove ; use a random move 25% of the time
 	ld a, $a
 	ld hl, wBuffer ; init temporary move selection array. Only the moves with the lowest numbers are chosen in the end
 	ld [hli], a   ; move 1
