@@ -724,7 +724,7 @@ AICheckIfHPBelowFraction:
     sub c
     ret                     ; return if current HP > threshold
 
-    jr z, .activateDesperation
+    jp z, .activateDesperation
 
 .activateDesperation:
     ; Enter desperation mode logic (encourage offensive moves)
