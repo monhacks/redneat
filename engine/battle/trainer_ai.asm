@@ -7,6 +7,8 @@ DEF ELITE_FOUR_CLASS_END    equ $24  ; Ending index for Elite Four
 DEF GYM_LEADER_GROUP        equ $01
 DEF ELITE_FOUR_GROUP        equ $02
 
+INCLUDE "data/trainers/ai_pointers.asm"
+
 ; Define Trainer Classes (Example)
 TrainerClasses:
     db $00 ; Youngster
