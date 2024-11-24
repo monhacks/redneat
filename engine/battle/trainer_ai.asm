@@ -113,6 +113,36 @@ FilterMovesByStatus:
 .nextMove:
     jr .checkStatus
 
+ApplyTrainerSpecificLogic:
+    cp ELITE_FOUR_CLASS
+    jr z, .eliteFourLogic
+    cp GYM_LEADER_CLASS
+    jr z, .gymLeaderLogic
+    ret
+
+.eliteFourLogic:
+    call EncourageOffensiveMoves
+    ret
+
+.gymLeaderLogic:
+    call EncourageBalancedStrategy
+    ret
+
+EncourageOffensiveMoves:
+    ; Adjust buffer to favor high-damage moves
+    ld hl, wBuffer
+    ld c, NUM_MOVES
+.offensiveLoop:
+    ld a, [hl]
+    and a
+    jr z, .nextOffensiveMove
+    dec [hl]
+.nextOffensiveMove:
+    inc hl
+    dec c
+    jr nz, .offensiveLoop
+    ret
+
 
 AIMoveChoiceModificationFunctionPointers:
 	dw AIMoveChoiceModification1
