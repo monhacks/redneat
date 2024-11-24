@@ -1,6 +1,9 @@
 ; creates a set of moves that may be used and returns its address in hl
 ; unused slots are filled with 0, all used slots may be chosen with equal probability
 AIEnemyTrainerChooseMoves:
+	call Random
+	and %00000011 ; adjust mask to control probability
+	jr z, .useRandomMove ; use a random move 25% of the time
 	ld a, $a
 	ld hl, wBuffer ; init temporary move selection array. Only the moves with the lowest numbers are chosen in the end
 	ld [hli], a   ; move 1
@@ -102,6 +105,9 @@ AIEnemyTrainerChooseMoves:
 .useOriginalMoveSet
 	ld hl, wEnemyMonMoves    ; use original move set
 	ret
+.useRandomMove
+    ld a, [hl] ; select a move randomly
+    jp hl
 
 AIMoveChoiceModificationFunctionPointers:
 	dw AIMoveChoiceModification1
