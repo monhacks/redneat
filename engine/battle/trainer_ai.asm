@@ -13,6 +13,8 @@ INCLUDE "data/trainers/pic_pointers_money.asm"
 
 INCLUDE "data/trainers/names.asm"
 
+INCLUDE "engine/battle/misc.asm"
+
 ; Define Trainer Classes (Example)
 TrainerClasses:
     db $00 ; Youngster
