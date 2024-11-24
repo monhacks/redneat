@@ -24,9 +24,6 @@ TrainerClasses:
     db $24 ; Champion (Elite Four end)
 
 ; Status Effect Definitions
-DEF SLEEP_EFFECT  equ $01
-DEF POISON_EFFECT equ $02
-DEF PARALYZE_EFFECT equ $03
 DEF FREEZE_EFFECT equ $04
 
 StatusAilmentMoveEffects:
