@@ -1,11 +1,11 @@
 ; Define Trainer Groups
-GYM_LEADER_CLASS_START  equ $10  ; Starting index for Gym Leaders
-GYM_LEADER_CLASS_END    equ $1F  ; Ending index for Gym Leaders
-ELITE_FOUR_CLASS_START  equ $20  ; Starting index for Elite Four
-ELITE_FOUR_CLASS_END    equ $24  ; Ending index for Elite Four
+DEF GYM_LEADER_CLASS_START  equ $10  ; Starting index for Gym Leaders
+DEF GYM_LEADER_CLASS_END    equ $1F  ; Ending index for Gym Leaders
+DEf ELITE_FOUR_CLASS_START  equ $20  ; Starting index for Elite Four
+DEF ELITE_FOUR_CLASS_END    equ $24  ; Ending index for Elite Four
 
-GYM_LEADER_GROUP        equ $01
-ELITE_FOUR_GROUP        equ $02
+DEF GYM_LEADER_GROUP        equ $01
+DEF ELITE_FOUR_GROUP        equ $02
 
 ; Define Trainer Classes (Example)
 TrainerClasses:
@@ -24,10 +24,10 @@ TrainerClasses:
     db $24 ; Champion (Elite Four end)
 
 ; Status Effect Definitions
-SLEEP_EFFECT  equ $01
-POISON_EFFECT equ $02
-PARALYZE_EFFECT equ $03
-FREEZE_EFFECT equ $04
+DEF SLEEP_EFFECT  equ $01
+DEF POISON_EFFECT equ $02
+DEF PARALYZE_EFFECT equ $03
+DEF FREEZE_EFFECT equ $04
 
 StatusAilmentMoveEffects:
     db SLEEP_EFFECT
