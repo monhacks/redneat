@@ -1,19 +1,85 @@
-; creates a set of moves that may be used and returns its address in hl
-; unused slots are filled with 0, all used slots may be chosen with equal probability
+; Group constants
+GYM_LEADER_CLASS_START  equ $10  ; Starting index for Gym Leaders
+GYM_LEADER_CLASS_END    equ $1F  ; Ending index for Gym Leaders
+ELITE_FOUR_CLASS_START  equ $20  ; Starting index for Elite Four
+ELITE_FOUR_CLASS_END    equ $24  ; Ending index for Elite Four
+
+GYM_LEADER_GROUP        equ $01
+ELITE_FOUR_GROUP        equ $02
+
+; Trainer classes (example)
+TrainerClasses:
+    db $00 ; Youngster
+    db $01 ; Lass
+    db $02 ; Bug Catcher
+    ; ...
+    db $10 ; Brock (Gym Leader start)
+    db $11 ; Misty
+    ; ...
+    db $1F ; Giovanni (Gym Leader end)
+    db $20 ; Lorelei (Elite Four start)
+    db $21 ; Bruno
+    db $22 ; Agatha
+    db $23 ; Lance
+    db $24 ; Champion (Elite Four end)
+
+CheckTrainerGroup:
+    ; Load the current trainer class
+    ld a, [wTrainerClass]
+    ; Check if Gym Leader
+    cp GYM_LEADER_CLASS_START
+    jr c, .notGymLeader
+    cp GYM_LEADER_CLASS_END + 1
+    jr nc, .notGymLeader
+    ld a, GYM_LEADER_GROUP
+    ret
+
+.notGymLeader:
+    ; Check if Elite Four
+    ld a, [wTrainerClass]
+    cp ELITE_FOUR_CLASS_START
+    jr c, .notEliteFour
+    cp ELITE_FOUR_CLASS_END + 1
+    jr nc, .notEliteFour
+    ld a, ELITE_FOUR_GROUP
+    ret
+
+.notEliteFour:
+    xor a  ; Default to 0 (no group)
+    ret
+
+ApplyTrainerGroupLogic:
+    ; Determine trainer group and apply corresponding logic
+    call CheckTrainerGroup
+    cp GYM_LEADER_GROUP
+    jr z, .gymLeaderLogic
+    cp ELITE_FOUR_GROUP
+    jr z, .eliteFourLogic
+    ret
+
+.gymLeaderLogic:
+    ; Balanced strategy for Gym Leaders
+    call EncourageBalancedStrategy
+    ret
+
+.eliteFourLogic:
+    ; Offensive strategy for Elite Four
+    call EncourageOffensiveMoves
+    ret
+
 AIEnemyTrainerChooseMoves:
-    ; Add randomness for less predictable behavior
     call Random
-    and %00000011          ; 25% chance to choose randomly
-    jp z, .useRandomMove   ; Jump to random move selection
-    
+    and %00000011         ; 25% chance to pick a random move
+    jp z, .useRandomMove  ; Jump to random move selection
+
     ; Initialize move array
     ld a, $a
-    ld hl, wBuffer         ; Temporary buffer
-    ld [hli], a            ; Move 1
-    ld [hli], a            ; Move 2
-    ld [hli], a            ; Move 3
-    ld [hl], a             ; Move 4
-    
+    ld hl, wBuffer        ; Temporary buffer for move selection
+    ld [hli], a           ; Move 1
+    ld [hli], a           ; Move 2
+    ld [hli], a           ; Move 3
+    ld [hl], a            ; Move 4
+
     ; Handle disabled moves
     ld a, [wEnemyDisabledMove]
     swap a
@@ -24,27 +90,21 @@ AIEnemyTrainerChooseMoves:
     ld c, a
     ld b, $0
     add hl, bc
-    ld [hl], $50           ; Discourage disabled move
-.noMoveDisabled
+    ld [hl], $50          ; Discourage disabled move
+.noMoveDisabled:
 
-    ; Apply trainer-specific logic
-    ld hl, TrainerClassMoveChoiceModifications
-    ld a, [wTrainerClass]
-    call ApplyTrainerSpecificLogic
+    ; Apply group-specific logic
+    call ApplyTrainerGroupLogic
 
-    ; Filter moves based on situational factors
+    ; Filter moves by effectiveness and status
     call FilterMovesByEffectiveness
     call FilterMovesByStatus
-
-    ; If all else fails, use original move set
-.useOriginalMoveSet:
-    ld hl, wEnemyMonMoves
     ret
 
 .useRandomMove:
     ld a, [wEnemyMonMoves]
     ld hl, wBuffer
-    ld [hl], a             ; Select a move randomly
+    ld [hl], a
     ret
 
 FilterMovesByEffectiveness:
@@ -56,7 +116,7 @@ FilterMovesByEffectiveness:
     ld a, [de]
     inc de
     and a
-    jr z, .nextMove        ; Skip empty slots
+    jr z, .nextMove         ; Skip empty slots
 
     ; Check type effectiveness
     call AIGetTypeEffectiveness
@@ -67,11 +127,11 @@ FilterMovesByEffectiveness:
     jr c, .notEffective
 
 .superEffective:
-    dec [hl]               ; Encourage super-effective moves
+    dec [hl]                ; Encourage super-effective moves
     jr .nextMove
 
 .notEffective:
-    inc [hl]               ; Discourage ineffective moves
+    inc [hl]                ; Discourage ineffective moves
 
 .nextMove:
     inc hl
@@ -113,716 +173,44 @@ FilterMovesByStatus:
 .nextMove:
     jr .checkStatus
 
-ApplyTrainerSpecificLogic:
-    cp ELITE_FOUR_CLASS
-    jr z, .eliteFourLogic
-    cp GYM_LEADER_CLASS
-    jr z, .gymLeaderLogic
-    ret
-
-.eliteFourLogic:
-    call EncourageOffensiveMoves
-    ret
-
-.gymLeaderLogic:
-    call EncourageBalancedStrategy
+EncourageBalancedStrategy:
+    ld hl, wBuffer
+    ld c, NUM_MOVES
+.balancedLoop:
+    ld a, [hl]
+    and a
+    jr z, .nextBalancedMove
+    dec [hl]               ; Slightly encourage all moves
+.nextBalancedMove:
+    inc hl
+    dec c
+    jr nz, .balancedLoop
     ret
 
 EncourageOffensiveMoves:
-    ; Adjust buffer to favor high-damage moves
     ld hl, wBuffer
+    ld de, wEnemyMonMoves
     ld c, NUM_MOVES
 .offensiveLoop:
-    ld a, [hl]
+    ld a, [de]
+    inc de
     and a
     jr z, .nextOffensiveMove
-    dec [hl]
+    ld a, [hl]
+    dec a                  ; Favor offensive moves
+    ld [hl], a
 .nextOffensiveMove:
     inc hl
     dec c
     jr nz, .offensiveLoop
     ret
 
-
-AIMoveChoiceModificationFunctionPointers:
-	dw AIMoveChoiceModification1
-	dw AIMoveChoiceModification2
-	dw AIMoveChoiceModification3
-	dw AIMoveChoiceModification4 ; unused, does nothing
-
-; discourages moves that cause no damage but only a status ailment if player's mon already has one
-AIMoveChoiceModification1:
-    ld a, [wBattleMonStatus]
-    and a
-    ret z                     ; return if no status ailment on player's mon
-    ld hl, wBuffer - 1        ; temp move selection array (-1 byte offset)
-    ld de, wEnemyMonMoves     ; enemy moves
-    ld b, NUM_MOVES + 1
-.nextMove
-    dec b
-    ret z                     ; processed all 4 moves
-    inc hl
-    ld a, [de]
-    and a
-    ret z                     ; no more moves in move set
-    inc de
-    call ReadMove
-    ld a, [wEnemyMovePower]
-    and a
-    jr nz, .nextMove          ; skip if move has power (is damaging)
-
-    ; Check if the move effect is a status effect
-    ld a, [wEnemyMoveEffect]
-    push hl
-    push de
-    push bc
-    ld hl, StatusAilmentMoveEffects
-    ld de, 1
-    call IsInArray
-    pop bc
-    pop de
-    pop hl
-    jr nc, .nextMove          ; continue if move effect is not a status ailment
-
-    ; Check if the status effect matches player's current status
-    ld a, [wBattleMonStatus]
-    ld hl, wEnemyMoveEffect
-    cp [hl]
-    jr nz, .differentStatus   ; if different, skip discouragement
-    ld a, [hl]
-    add $5                    ; heavily discourage move if status is redundant
-    ld [hl], a
-.differentStatus
-    jr .nextMove              ; move to the next move in the list
-
 StatusAilmentMoveEffects:
-    db EFFECT_01              ; unused sleep effect
     db SLEEP_EFFECT
     db POISON_EFFECT
     db PARALYZE_EFFECT
-    db -1                     ; end
+    db FREEZE_EFFECT
+    db -1                 ; End of list
 
-; slightly encourage moves with specific effects.
-; in particular, stat-modifying moves and other move effects
-; that fall in-between
-AIMoveChoiceModification2:
-	ld a, [wAILayer2Encouragement]
-	cp $1
-	ret nz
-	ld hl, wBuffer - 1 ; temp move selection array (-1 byte offset)
-	ld de, wEnemyMonMoves ; enemy moves
-	ld b, NUM_MOVES + 1
-.nextMove
-	dec b
-	ret z ; processed all 4 moves
-	inc hl
-	ld a, [de]
-	and a
-	ret z ; no more moves in move set
-	inc de
-	call ReadMove
-	ld a, [wEnemyMoveEffect]
-	cp ATTACK_UP1_EFFECT
-	jr c, .nextMove
-	cp BIDE_EFFECT
-	jr c, .preferMove
-	cp ATTACK_UP2_EFFECT
-	jr c, .nextMove
-	cp POISON_EFFECT
-	jr c, .preferMove
-	jr .nextMove
-.preferMove
-	dec [hl] ; slightly encourage this move
-	jr .nextMove
 
-; encourages moves that are effective against the player's mon (even if non-damaging).
-; discourage damaging moves that are ineffective or not very effective against the player's mon,
-; unless there's no damaging move that deals at least neutral damage
-AIMoveChoiceModification3:
-	ld hl, wBuffer - 1 ; temp move selection array (-1 byte offset)
-	ld de, wEnemyMonMoves ; enemy moves
-	ld b, NUM_MOVES + 1
-.nextMove
-	dec b
-	ret z ; processed all 4 moves
-	inc hl
-	ld a, [de]
-	and a
-	ret z ; no more moves in move set
-	inc de
-	call ReadMove
-	push hl
-	push bc
-	push de
-	callfar AIGetTypeEffectiveness
-	pop de
-	pop bc
-	pop hl
-	ld a, [wTypeEffectiveness]
-	cp $10
-	jr z, .nextMove
-	jr c, .notEffectiveMove
-	dec [hl] ; slightly encourage this move
-	jr .nextMove
-.notEffectiveMove ; discourages non-effective moves if better moves are available
-	push hl
-	push de
-	push bc
-	ld a, [wEnemyMoveType]
-	ld d, a
-	ld hl, wEnemyMonMoves  ; enemy moves
-	ld b, NUM_MOVES + 1
-	ld c, $0
-.loopMoves
-	dec b
-	jr z, .done
-	ld a, [hli]
-	and a
-	jr z, .done
-	call ReadMove
-	ld a, [wEnemyMoveEffect]
-	cp SUPER_FANG_EFFECT
-	jr z, .betterMoveFound ; Super Fang is considered to be a better move
-	cp SPECIAL_DAMAGE_EFFECT
-	jr z, .betterMoveFound ; any special damage moves are considered to be better moves
-	cp FLY_EFFECT
-	jr z, .betterMoveFound ; Fly is considered to be a better move
-	ld a, [wEnemyMoveType]
-	cp d
-	jr z, .loopMoves
-	ld a, [wEnemyMovePower]
-	and a
-	jr nz, .betterMoveFound ; damaging moves of a different type are considered to be better moves
-	jr .loopMoves
-.betterMoveFound
-	ld c, a
-.done
-	ld a, c
-	pop bc
-	pop de
-	pop hl
-	and a
-	jr z, .nextMove
-	inc [hl] ; slightly discourage this move
-	jr .nextMove
-AIMoveChoiceModification4:
-	ret
 
-ReadMove:
-	push hl
-	push de
-	push bc
-	dec a
-	ld hl, Moves
-	ld bc, MOVE_LENGTH
-	call AddNTimes
-	ld de, wEnemyMoveNum
-	call CopyData
-	pop bc
-	pop de
-	pop hl
-	ret
-
-INCLUDE "data/trainers/move_choices.asm"
-
-INCLUDE "data/trainers/pic_pointers_money.asm"
-
-INCLUDE "data/trainers/names.asm"
-
-INCLUDE "engine/battle/misc.asm"
-
-INCLUDE "engine/battle/read_trainer_party.asm"
-
-INCLUDE "data/trainers/special_moves.asm"
-
-INCLUDE "data/trainers/parties.asm"
-
-TrainerAI:
-	and a
-	ld a, [wIsInBattle]
-	dec a
-	ret z ; if not a trainer, we're done here
-	ld a, [wLinkState]
-	cp LINK_STATE_BATTLING
-	ret z ; if in a link battle, we're done as well
-	ld a, [wTrainerClass] ; what trainer class is this?
-	dec a
-	ld c, a
-	ld b, 0
-	ld hl, TrainerAIPointers
-	add hl, bc
-	add hl, bc
-	add hl, bc
-	ld a, [wAICount]
-	and a
-	ret z ; if no AI uses left, we're done here
-	inc hl
-	inc a
-	jr nz, .getpointer
-	dec hl
-	ld a, [hli]
-	ld [wAICount], a
-.getpointer
-	ld a, [hli]
-	ld h, [hl]
-	ld l, a
-	call Random
-	jp hl
-
-INCLUDE "data/trainers/ai_pointers.asm"
-
-JugglerAI:
-	cp 25 percent + 1
-	ret nc
-	jp AISwitchIfEnoughMons
-
-BlackbeltAI:
-	cp 13 percent - 1
-	ret nc
-	jp AIUseXAttack
-
-GiovanniAI:
-	cp 25 percent + 1
-	ret nc
-	jp AIUseGuardSpec
-
-CooltrainerMAI:
-	cp 25 percent + 1
-	ret nc
-	jp AIUseXAttack
-
-CooltrainerFAI:
-	; The intended 25% chance to consider switching will not apply.
-	; Uncomment the line below to fix this.
-	cp 25 percent + 1
-	; ret nc
-	ld a, 10
-	call AICheckIfHPBelowFraction
-	jp c, AIUseHyperPotion
-	ld a, 5
-	call AICheckIfHPBelowFraction
-	ret nc
-	jp AISwitchIfEnoughMons
-
-BrockAI:
-; if his active monster has a status condition, use a full heal
-	ld a, [wEnemyMonStatus]
-	and a
-	ret z
-	jp AIUseFullHeal
-
-MistyAI:
-	cp 25 percent + 1
-	ret nc
-	jp AIUseXDefend
-
-LtSurgeAI:
-	cp 25 percent + 1
-	ret nc
-	jp AIUseXSpeed
-
-ErikaAI:
-	cp 50 percent + 1
-	ret nc
-	ld a, 10
-	call AICheckIfHPBelowFraction
-	ret nc
-	jp AIUseSuperPotion
-
-KogaAI:
-	cp 25 percent + 1
-	ret nc
-	jp AIUseXAttack
-
-BlaineAI:
-	cp 25 percent + 1
-	ret nc
-	jp AIUseSuperPotion
-
-SabrinaAI:
-	cp 25 percent + 1
-	ret nc
-	ld a, 10
-	call AICheckIfHPBelowFraction
-	ret nc
-	jp AIUseHyperPotion
-
-Rival2AI:
-	cp 13 percent - 1
-	ret nc
-	ld a, 5
-	call AICheckIfHPBelowFraction
-	ret nc
-	jp AIUsePotion
-
-Rival3AI:
-	cp 13 percent - 1
-	ret nc
-	ld a, 5
-	call AICheckIfHPBelowFraction
-	ret nc
-	jp AIUseFullRestore
-
-LoreleiAI:
-	cp 50 percent + 1
-	ret nc
-	ld a, 5
-	call AICheckIfHPBelowFraction
-	ret nc
-	jp AIUseSuperPotion
-
-BrunoAI:
-	cp 25 percent + 1
-	ret nc
-	jp AIUseXDefend
-
-AgathaAI:
-	cp 8 percent
-	jp c, AISwitchIfEnoughMons
-	cp 50 percent + 1
-	ret nc
-	ld a, 4
-	call AICheckIfHPBelowFraction
-	ret nc
-	jp AIUseSuperPotion
-
-LanceAI:
-	cp 50 percent + 1
-	ret nc
-	ld a, 5
-	call AICheckIfHPBelowFraction
-	ret nc
-	jp AIUseHyperPotion
-
-GenericAI:
-	and a ; clear carry
-	ret
-
-; end of individual trainer AI routines
-
-DecrementAICount:
-	ld hl, wAICount
-	dec [hl]
-	scf
-	ret
-
-AIPlayRestoringSFX:
-	ld a, SFX_HEAL_AILMENT
-	jp PlaySoundWaitForCurrent
-
-AIUseFullRestore:
-	call AICureStatus
-	ld a, FULL_RESTORE
-	ld [wAIItem], a
-	ld de, wHPBarOldHP
-	ld hl, wEnemyMonHP + 1
-	ld a, [hld]
-	ld [de], a
-	inc de
-	ld a, [hl]
-	ld [de], a
-	inc de
-	ld hl, wEnemyMonMaxHP + 1
-	ld a, [hld]
-	ld [de], a
-	inc de
-	ld [wHPBarMaxHP], a
-	ld [wEnemyMonHP + 1], a
-	ld a, [hl]
-	ld [de], a
-	ld [wHPBarMaxHP+1], a
-	ld [wEnemyMonHP], a
-	jr AIPrintItemUseAndUpdateHPBar
-
-AIUsePotion:
-        ; Check if HP is below 50% before using a healing item
-        ld a, 2
-        call AICheckIfHPBelowFraction
-        ret nc ; don’t use potion if HP is above threshold
-        ; proceed with existing potion usage
-        ld a, POTION
-	ld b, 20
-	jr AIRecoverHP
-
-AIUseSuperPotion:
-; enemy trainer heals his monster with a super potion
-        ; Check if HP is below 50% before using a healing item
-        ld a, 2
-        call AICheckIfHPBelowFraction
-        ret nc ; don’t use potion if HP is above threshold
-        ; proceed with existing potion usage
-	ld a, SUPER_POTION
-	ld b, 50
-	jr AIRecoverHP
-
-AIUseHyperPotion:
-; enemy trainer heals his monster with a hyper potion
-        ; Check if HP is below 50% before using a healing item
-        ld a, 2
-        call AICheckIfHPBelowFraction
-        ret nc ; don’t use potion if HP is above threshold
-        ; proceed with existing potion usage
-	ld a, HYPER_POTION
-	ld b, 200
-	; fallthrough
-
-AIRecoverHP:
-; heal b HP and print "trainer used $(a) on pokemon!"
-	ld [wAIItem], a
-	ld hl, wEnemyMonHP + 1
-	ld a, [hl]
-	ld [wHPBarOldHP], a
-	add b
-	ld [hld], a
-	ld [wHPBarNewHP], a
-	ld a, [hl]
-	ld [wHPBarOldHP+1], a
-	ld [wHPBarNewHP+1], a
-	jr nc, .next
-	inc a
-	ld [hl], a
-	ld [wHPBarNewHP+1], a
-.next
-	inc hl
-	ld a, [hld]
-	ld b, a
-	ld de, wEnemyMonMaxHP + 1
-	ld a, [de]
-	dec de
-	ld [wHPBarMaxHP], a
-	sub b
-	ld a, [hli]
-	ld b, a
-	ld a, [de]
-	ld [wHPBarMaxHP+1], a
-	sbc b
-	jr nc, AIPrintItemUseAndUpdateHPBar
-	inc de
-	ld a, [de]
-	dec de
-	ld [hld], a
-	ld [wHPBarNewHP], a
-	ld a, [de]
-	ld [hl], a
-	ld [wHPBarNewHP+1], a
-	; fallthrough
-
-AIPrintItemUseAndUpdateHPBar:
-	call AIPrintItemUse_
-	hlcoord 2, 2
-	xor a
-	ld [wHPBarType], a
-	predef UpdateHPBar2
-	jp DecrementAICount
-
-AISwitchIfEnoughMons:
-; enemy trainer switches if there are 2 or more unfainted mons in party
-	ld a, [wEnemyPartyCount]
-	ld c, a
-	ld hl, wEnemyMon1HP
-
-	ld d, 0 ; keep count of unfainted monsters
-
-	; count how many monsters haven't fainted yet
-
-        ; Check effectiveness of current Pokémon's type
-        callfar AIGetTypeEffectiveness
-        ld a, [wTypeEffectiveness]
-        cp $10 ; if effectiveness is very low, encourage switch
-        jr c, .encourageSwitch
-.loop
-	ld a, [hli]
-	ld b, a
-	ld a, [hld]
-	or b
-	jr z, .Fainted ; has monster fainted?
-	inc d
-.Fainted
-	push bc
-	ld bc, wEnemyMon2 - wEnemyMon1
-	add hl, bc
-	pop bc
-	dec c
-	jr nz, .loop
-
-	ld a, d ; how many available monsters are there?
-	cp 2    ; don't bother if only 1
-	jp nc, SwitchEnemyMon
-	and a
-	ret
-.encourageSwitch
-    ; switch if the current Pokémon is at a disadvantage
-    jp SwitchEnemyMon
-
-SwitchEnemyMon:
-
-; prepare to withdraw the active monster: copy hp, number, and status to roster
-
-	ld a, [wEnemyMonPartyPos]
-	ld hl, wEnemyMon1HP
-	ld bc, wEnemyMon2 - wEnemyMon1
-	call AddNTimes
-	ld d, h
-	ld e, l
-	ld hl, wEnemyMonHP
-	ld bc, 4
-	call CopyData
-
-	ld hl, AIBattleWithdrawText
-	call PrintText
-
-	; This wFirstMonsNotOutYet variable is abused to prevent the player from
-	; switching in a new mon in response to this switch.
-	ld a, 1
-	ld [wFirstMonsNotOutYet], a
-	callfar EnemySendOut
-	xor a
-	ld [wFirstMonsNotOutYet], a
-
-	ld a, [wLinkState]
-	cp LINK_STATE_BATTLING
-	ret z
-	scf
-	ret
-
-.encourageSwitch
-    ; switch if the current Pokémon is at a disadvantage
-    jp SwitchEnemyMon
-
-AIBattleWithdrawText:
-	text_far _AIBattleWithdrawText
-	text_end
-
-AIUseFullHeal:
-	call AIPlayRestoringSFX
-	call AICureStatus
-	ld a, FULL_HEAL
-	jp AIPrintItemUse
-
-AICureStatus:
-; cures the status of enemy's active pokemon
-	ld a, [wEnemyMonPartyPos]
-	ld hl, wEnemyMon1Status
-	ld bc, wEnemyMon2 - wEnemyMon1
-	call AddNTimes
-	xor a
-	ld [hl], a ; clear status in enemy team roster
-	ld [wEnemyMonStatus], a ; clear status of active enemy
-	ld hl, wEnemyBattleStatus3
-	res BADLY_POISONED, [hl]
-	ret
-
-AIUseXAccuracy: ; unused
-	call AIPlayRestoringSFX
-	ld hl, wEnemyBattleStatus2
-	set USING_X_ACCURACY, [hl]
-	ld a, X_ACCURACY
-	jp AIPrintItemUse
-
-AIUseGuardSpec:
-	call AIPlayRestoringSFX
-	ld hl, wEnemyBattleStatus2
-	set PROTECTED_BY_MIST, [hl]
-	ld a, GUARD_SPEC
-	jp AIPrintItemUse
-
-AIUseDireHit: ; unused
-	call AIPlayRestoringSFX
-	ld hl, wEnemyBattleStatus2
-	set GETTING_PUMPED, [hl]
-	ld a, DIRE_HIT
-	jp AIPrintItemUse
-
-AICheckIfHPBelowFraction:
-    ; Return carry if enemy trainer's current HP is below 1 / a of the maximum
-    ldh [hDivisor], a
-    ld hl, wEnemyMonMaxHP
-    ld a, [hli]
-    ldh [hDividend], a
-    ld a, [hl]
-    ldh [hDividend + 1], a
-    ld b, 2
-    call Divide
-    ldh a, [hQuotient + 3]
-    ld c, a
-    ldh a, [hQuotient + 2]
-    ld b, a
-    ld hl, wEnemyMonHP + 1
-    ld a, [hld]
-    ld e, a
-    ld a, [hl]
-    ld d, a
-    ld a, d
-    sub b
-    ret nz                  ; return if current HP > threshold
-    ld a, e
-    sub c
-    ret                     ; return if current HP > threshold
-
-    jp z, .activateDesperation
-
-.activateDesperation:
-    ; Enter desperation mode logic (encourage offensive moves)
-    ld a, $05               ; Encourage aggressive moves by setting a high weight
-    ld [wAILayer2Encouragement], a
-    scf                     ; Set carry flag to indicate desperation mode
-    ret
-
-AIUseXAttack:
-	ld b, $A
-	ld a, X_ATTACK
-	jr AIIncreaseStat
-
-AIUseXDefend:
-	ld b, $B
-	ld a, X_DEFEND
-	jr AIIncreaseStat
-
-AIUseXSpeed:
-	ld b, $C
-	ld a, X_SPEED
-	jr AIIncreaseStat
-
-AIUseXSpecial:
-	ld b, $D
-	ld a, X_SPECIAL
-	; fallthrough
-
-AIIncreaseStat:
-	ld [wAIItem], a
-	push bc
-	call AIPrintItemUse_
-	pop bc
-	ld hl, wEnemyMoveEffect
-	ld a, [hld]
-	push af
-	ld a, [hl]
-	push af
-	push hl
-	ld a, XSTATITEM_DUPLICATE_ANIM
-	ld [hli], a
-	ld [hl], b
-	callfar StatModifierUpEffect
-	pop hl
-	pop af
-	ld [hli], a
-	pop af
-	ld [hl], a
-	jp DecrementAICount
-
-AIPrintItemUse:
-	ld [wAIItem], a
-	call AIPrintItemUse_
-	jp DecrementAICount
-
-AIPrintItemUse_:
-; print "x used [wAIItem] on z!"
-	ld a, [wAIItem]
-	ld [wNamedObjectIndex], a
-	call GetItemName
-	ld hl, AIBattleUseItemText
-	jp PrintText
-
-AIBattleUseItemText:
-	text_far _AIBattleUseItemText
-	text_end
