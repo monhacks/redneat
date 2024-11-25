@@ -567,11 +567,9 @@ AISwitchIfEnoughMons:
 	ld a, [wEnemyPartyCount]
 	ld c, a
 	ld hl, wEnemyMon1HP
-
-    ld a, [wEnemyMonHP]
-    cp 30  ; Switch if HP < 30%
-    jp c, SwitchEnemyMon
-
+        ld a, [wEnemyMonHP]
+        cp 30 ; Switch if health is below 30%
+        jp c, SwitchEnemyMon
 	ld d, 0 ; keep count of unfainted monsters
 
 	; count how many monsters haven't fainted yet
