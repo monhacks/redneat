@@ -189,18 +189,18 @@ AIMoveChoiceModification2:
 ; discourage damaging moves that are ineffective or not very effective against the player's mon,
 ; unless there's no damaging move that deals at least neutral damage
 AIMoveChoiceModification3:
-    ; Calculate type effectiveness
+    ; Encourage moves with high effectiveness and discourage ineffective ones
     push hl
     callfar AIGetTypeEffectiveness
     pop hl
     ld a, [wTypeEffectiveness]
     cp $20
     jr nc, .HighlyEffectiveMove
-    ; Discourage non-effective moves
+    ; Discourage ineffective moves
     inc [hl]
     jr .nextMove
 .HighlyEffectiveMove:
-    ; Encourage highly effective moves
+    ; Heavily encourage super-effective moves
     dec [hl]
     jr .nextMove
 .nextMove
