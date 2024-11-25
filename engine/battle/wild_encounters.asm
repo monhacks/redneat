@@ -103,35 +103,30 @@ TryDoWildEncounter:
 
 ; Wild Pokémon AI: Selects the best move based on effectiveness and strategy
 WildAIMoveSelection:
-    ld hl, wEnemyMonMoves       ; Pointer to enemy's moves
-    ld b, NUM_MOVES             ; Number of moves to evaluate
-    ld d, 0                     ; Effectiveness flag (best move)
+    ; Prioritize effective moves
+    ld hl, wEnemyMonMoves
+    ld b, NUM_MOVES
+    .nextMove:
+        dec b
+        ret z ; Exit if no more moves
+        ld a, [hl]
+        cp 0
+        jr z, .skipMove ; Skip empty slots
+        call ReadMove
+        callfar AIGetTypeEffectiveness
+        ld a, [wTypeEffectiveness]
+        cp $20
+        jr nc, .EncourageMove
+        inc d ; Discourage ineffective moves
+        jr .EvaluateNext
+    .EncourageMove:
+        dec d ; Encourage effective moves
+    .EvaluateNext:
+        inc hl
+        jr .nextMove
+    .skipMove:
+        inc hl
+        jr .nextMove
 
-.nextMove:
-    dec b
-    ret z                       ; Exit if all moves are processed
-    ld a, [hl]                  ; Read move ID
-    cp 0                        ; Ignore empty move slots
-    jr z, .skipMove
-    call ReadMove               ; Load move data
-    push hl                     ; Preserve move pointer
-    callfar AIGetTypeEffectiveness ; Evaluate type effectiveness
-    pop hl                      ; Restore move pointer
-    ld a, [wTypeEffectiveness]  ; Check effectiveness
-    cp $10                      ; Neutral or better effectiveness
-    jr nc, .highEffectiveness
-    inc d                       ; Discourage less effective moves
-    jr .nextEvaluation
-
-.highEffectiveness:
-    dec d                       ; Encourage highly effective moves
-
-.nextEvaluation:
-    inc hl                      ; Next move slot
-    jr .nextMove
-
-.skipMove:
-    inc hl                      ; Skip empty move slots
-    jr .nextMove
 
 INCLUDE "data/wild/probabilities.asm"
