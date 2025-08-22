@@ -33,8 +33,8 @@ EnterMap::
 	res BIT_NO_NPC_FACE_PLAYER, [hl]
 	call UpdateSprites
 	ld hl, wCurrentMapScriptFlags
-	set 5, [hl]
-	set 6, [hl]
+	set BIT_CUR_MAP_LOADED_1, [hl]
+	set BIT_CUR_MAP_LOADED_2, [hl]
 	xor a
 	ld [wJoyIgnore], a
 
@@ -76,7 +76,7 @@ OverworldLoopLessDelay::
 	jr z, .startButtonNotPressed
 ; if START is pressed
 	xor a ; TEXT_START_MENU
-	ldh [hSpriteIndexOrTextID], a
+	ldh [hTextID], a
 	jp .displayDialogue
 .startButtonNotPressed
 	bit BIT_A_BUTTON, a
@@ -92,7 +92,7 @@ OverworldLoopLessDelay::
 	and a
 	jp z, OverworldLoop ; jump if a hidden object or bookshelf was found, but not if a card key door was found
 	call IsSpriteOrSignInFrontOfPlayer
-	ldh a, [hSpriteIndexOrTextID]
+	ldh a, [hTextID]
 	and a
 	jp z, OverworldLoop
 .displayDialogue
@@ -121,7 +121,7 @@ OverworldLoopLessDelay::
 	ld a, [wCurMap]
 	call SwitchToMapRomBank ; switch to the ROM bank of the current map
 	ld hl, wCurMapTileset
-	set 7, [hl]
+	set BIT_NO_PREVIOUS_MAP, [hl]
 .changeMap
 	jp EnterMap
 .checkForOpponent
@@ -329,8 +329,8 @@ OverworldLoopLessDelay::
 	ld hl, wStatusFlags7
 	res BIT_TRAINER_BATTLE, [hl]
 	ld hl, wCurrentMapScriptFlags
-	set 5, [hl]
-	set 6, [hl]
+	set BIT_CUR_MAP_LOADED_1, [hl]
+	set BIT_CUR_MAP_LOADED_2, [hl]
 	xor a
 	ldh [hJoyHeld], a
 	ld a, [wCurMap]
@@ -879,10 +879,10 @@ LoadTilesetTilePatternData::
 	ld a, [wTilesetBank]
 	jp FarCopyData2
 
-; this loads the current maps complete tile map (which references blocks, not individual tiles) to C6E8
+; this loads the current map's complete tile map (which references blocks, not individual tiles) to wOverworldMap
 ; it can also load partial tile maps of connected maps into a border of length 3 around the current map
 LoadTileBlockMap::
-; fill C6E8-CBFB with the background tile
+; fill wOverworldMap-wOverworldMapEnd with the background tile
 	ld hl, wOverworldMap
 	ld a, [wMapBackgroundTile]
 	ld d, a
@@ -1072,11 +1072,11 @@ LoadEastWestConnectionsTileMap::
 	ret
 
 ; function to check if there is a sign or sprite in front of the player
-; if so, it is stored in [hSpriteIndexOrTextID]
-; if not, [hSpriteIndexOrTextID] is set to 0
+; if so, it is stored in [hTextID]
+; if not, [hTextID] is set to 0
 IsSpriteOrSignInFrontOfPlayer::
 	xor a
-	ldh [hSpriteIndexOrTextID], a
+	ldh [hTextID], a
 	ld a, [wNumSigns]
 	and a
 	jr z, .extendRangeOverCounter
@@ -1106,7 +1106,7 @@ IsSpriteOrSignInFrontOfPlayer::
 	dec c
 	add hl, bc
 	ld a, [hl]
-	ldh [hSpriteIndexOrTextID], a ; store sign text ID
+	ldh [hTextID], a ; store sign text ID
 	pop bc
 	pop hl
 	ret
@@ -1127,7 +1127,7 @@ IsSpriteOrSignInFrontOfPlayer::
 	jr nz, .counterTilesLoop
 
 ; part of the above function, but sometimes its called on its own, when signs are irrelevant
-; the caller must zero [hSpriteIndexOrTextID]
+; the caller must zero [hTextID]
 IsSpriteInFrontOfPlayer::
 	ld d, $10 ; talking range in pixels (normal range)
 IsSpriteInFrontOfPlayer2::
@@ -1210,9 +1210,9 @@ IsSpriteInFrontOfPlayer2::
 	and $f0
 	inc a
 	ld l, a ; hl = x#SPRITESTATEDATA1_MOVEMENTSTATUS
-	set 7, [hl] ; set flag to make the sprite face the player
+	set BIT_FACE_PLAYER, [hl]
 	ld a, e
-	ldh [hSpriteIndexOrTextID], a
+	ldh [hTextID], a
 	ret
 
 ; function to check if the player will jump down a ledge and check if the tile ahead is passable (when not surfing)
@@ -1231,9 +1231,9 @@ CollisionCheckOnLand::
 	and d ; check if a sprite is in the direction the player is trying to go
 	jr nz, .collision
 	xor a
-	ldh [hSpriteIndexOrTextID], a
+	ldh [hTextID], a
 	call IsSpriteInFrontOfPlayer ; check for sprite collisions again? when does the above check fail to detect a sprite collision?
-	ldh a, [hSpriteIndexOrTextID]
+	ldh a, [hTextID]
 	and a ; was there a sprite collision?
 	jr nz, .collision
 ; if no sprite collision
@@ -1303,7 +1303,7 @@ CheckForTilePairCollisions::
 	ld a, [wTileInFrontOfPlayer]
 	ld c, a
 .tilePairCollisionLoop
-	ld a, [wCurMapTileset] ; tileset number
+	ld a, [wCurMapTileset]
 	ld b, a
 	ld a, [hli]
 	cp $ff
@@ -1943,7 +1943,7 @@ CollisionCheckOnWater::
 	call PlayDefaultMusic
 	jr .noCollision
 .checkIfVermilionDockTileset
-	ld a, [wCurMapTileset] ; tileset
+	ld a, [wCurMapTileset]
 	cp SHIP_PORT ; Vermilion Dock tileset
 	jr nz, .noCollision ; keep surfing if it's not the boarding platform tile
 	jr .stopSurfing ; if it is the boarding platform tile, stop surfing
@@ -2002,7 +2002,7 @@ LoadPlayerSpriteGraphicsCommon::
 	jr nc, .noCarry
 	inc d
 .noCarry
-	set 3, h
+	set 3, h ; add $800 ($80 tiles) to hl (1 << 3 == $8)
 	lb bc, BANK(RedSprite), $0c
 	jp CopyVideoData
 
@@ -2015,10 +2015,10 @@ LoadMapHeader::
 	call SwitchToMapRomBank
 	ld a, [wCurMapTileset]
 	ld b, a
-	res 7, a
+	res BIT_NO_PREVIOUS_MAP, a
 	ld [wCurMapTileset], a
 	ldh [hPreviousTileset], a
-	bit 7, b
+	bit BIT_NO_PREVIOUS_MAP, b
 	ret nz
 	ld hl, MapHeaderPointers
 	ld a, [wCurMap]
@@ -2203,9 +2203,9 @@ LoadMapHeader::
 	ld [hl], a ; store text ID in byte 1 of sprite entry
 	pop hl
 	ldh a, [hLoadSpriteTemp1]
-	bit 6, a
+	bit BIT_TRAINER, a
 	jr nz, .trainerSprite
-	bit 7, a
+	bit BIT_ITEM, a
 	jr nz, .itemBallSprite
 	jr .regularSprite
 .trainerSprite

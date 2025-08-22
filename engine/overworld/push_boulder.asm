@@ -6,19 +6,19 @@ TryPushingBoulder::
 	bit BIT_BOULDER_DUST, a
 	ret nz
 	xor a
-	ldh [hSpriteIndexOrTextID], a
+	ldh [hSpriteIndex], a
 	call IsSpriteInFrontOfPlayer
-	ldh a, [hSpriteIndexOrTextID]
+	ldh a, [hSpriteIndex]
 	ld [wBoulderSpriteIndex], a
 	and a
 	jp z, ResetBoulderPushFlags
 	ld hl, wSpritePlayerStateData1MovementStatus
 	ld d, $0
-	ldh a, [hSpriteIndexOrTextID]
+	ldh a, [hSpriteIndex]
 	swap a
 	ld e, a
 	add hl, de
-	res 7, [hl]
+	res BIT_FACE_PLAYER, [hl]
 	call GetSpriteMovementByte2Pointer
 	ld a, [hl]
 	cp BOULDER_MOVEMENT_BYTE_2

@@ -361,8 +361,8 @@ ClearBothBGMaps:
 	jp FillMemory
 
 LoadTitleMonSprite:
-	ld [wcf91], a
-	ld [wd0b5], a
+	ld [wCurPartySpecies], a
+	ld [wCurSpecies], a
 	hlcoord 5, 10
 	call GetMonHeader
 	jp LoadFrontSpriteByMonIndex

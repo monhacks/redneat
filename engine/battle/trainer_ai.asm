@@ -189,9 +189,20 @@ AIMoveChoiceModification2:
 ; discourage damaging moves that are ineffective or not very effective against the player's mon,
 ; unless there's no damaging move that deals at least neutral damage
 AIMoveChoiceModification3:
-	ld hl, wBuffer - 1 ; temp move selection array (-1 byte offset)
-	ld de, wEnemyMonMoves ; enemy moves
-	ld b, NUM_MOVES + 1
+    ; Encourage moves with high effectiveness and discourage ineffective ones
+    push hl
+    callfar AIGetTypeEffectiveness
+    pop hl
+    ld a, [wTypeEffectiveness]
+    cp $20
+    jr nc, .HighlyEffectiveMove
+    ; Discourage ineffective moves
+    inc [hl]
+    jr .nextMove
+.HighlyEffectiveMove:
+    ; Heavily encourage super-effective moves
+    dec [hl]
+    jr .nextMove
 .nextMove
 	dec b
 	ret z ; processed all 4 moves
@@ -556,7 +567,9 @@ AISwitchIfEnoughMons:
 	ld a, [wEnemyPartyCount]
 	ld c, a
 	ld hl, wEnemyMon1HP
-
+        ld a, [wEnemyMonHP]
+        cp 30 ; Switch if health is below 30%
+        jp c, SwitchEnemyMon
 	ld d, 0 ; keep count of unfainted monsters
 
 	; count how many monsters haven't fainted yet
@@ -632,27 +645,27 @@ AICureStatus:
 	ld [hl], a ; clear status in enemy team roster
 	ld [wEnemyMonStatus], a ; clear status of active enemy
 	ld hl, wEnemyBattleStatus3
-	res 0, [hl]
+	res BADLY_POISONED, [hl]
 	ret
 
 AIUseXAccuracy: ; unused
 	call AIPlayRestoringSFX
 	ld hl, wEnemyBattleStatus2
-	set 0, [hl]
+	set USING_X_ACCURACY, [hl]
 	ld a, X_ACCURACY
 	jp AIPrintItemUse
 
 AIUseGuardSpec:
 	call AIPlayRestoringSFX
 	ld hl, wEnemyBattleStatus2
-	set 1, [hl]
+	set PROTECTED_BY_MIST, [hl]
 	ld a, GUARD_SPEC
 	jp AIPrintItemUse
 
 AIUseDireHit: ; unused
 	call AIPlayRestoringSFX
 	ld hl, wEnemyBattleStatus2
-	set 2, [hl]
+	set GETTING_PUMPED, [hl]
 	ld a, DIRE_HIT
 	jp AIPrintItemUse
 
@@ -732,7 +745,7 @@ AIPrintItemUse:
 AIPrintItemUse_:
 ; print "x used [wAIItem] on z!"
 	ld a, [wAIItem]
-	ld [wd11e], a
+	ld [wNamedObjectIndex], a
 	call GetItemName
 	ld hl, AIBattleUseItemText
 	jp PrintText

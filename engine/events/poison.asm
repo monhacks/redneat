@@ -1,7 +1,7 @@
 ApplyOutOfBattlePoisonDamage:
 	ld a, [wStatusFlags5]
 	assert BIT_SCRIPTED_MOVEMENT_STATE == 7
-	add a ; overflows bit 7 into carry flag
+	add a ; overflows scripted movement state bit into carry flag
 	jp c, .noBlackOut ; no black out if joypad states are being simulated
 	ld a, [wPartyCount]
 	and a
@@ -44,7 +44,7 @@ ApplyOutOfBattlePoisonDamage:
 	inc hl
 	ld [hl], a
 	ld a, [de]
-	ld [wd11e], a
+	ld [wPokedexNum], a
 	push de
 	ld a, [wWhichPokemon]
 	ld hl, wPartyMonNicks
@@ -53,7 +53,7 @@ ApplyOutOfBattlePoisonDamage:
 	ld [wJoyIgnore], a
 	call EnableAutoTextBoxDrawing
 	ld a, TEXT_MON_FAINTED
-	ldh [hSpriteIndexOrTextID], a
+	ldh [hTextID], a
 	call DisplayTextID
 	pop de
 	pop hl
@@ -100,7 +100,7 @@ ApplyOutOfBattlePoisonDamage:
 	jr nz, .noBlackOut
 	call EnableAutoTextBoxDrawing
 	ld a, TEXT_BLACKED_OUT
-	ldh [hSpriteIndexOrTextID], a
+	ldh [hTextID], a
 	call DisplayTextID
 	ld hl, wStatusFlags4
 	set BIT_BATTLE_OVER_OR_BLACKOUT, [hl]

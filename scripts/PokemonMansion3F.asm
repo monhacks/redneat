@@ -10,8 +10,8 @@ PokemonMansion3F_Script:
 
 Mansion3CheckReplaceSwitchDoorBlocks:
 	ld hl, wCurrentMapScriptFlags
-	bit 5, [hl]
-	res 5, [hl]
+	bit BIT_CUR_MAP_LOADED_1, [hl]
+	res BIT_CUR_MAP_LOADED_1, [hl]
 	ret z
 	CheckEvent EVENT_MANSION_SWITCH_ON
 	jr nz, .switchTurnedOn
@@ -80,7 +80,7 @@ Mansion3Script_Switches::
 	xor a
 	ldh [hJoyHeld], a
 	ld a, TEXT_POKEMONMANSION3F_SWITCH
-	ldh [hSpriteIndexOrTextID], a
+	ldh [hTextID], a
 	jp DisplayTextID
 
 PokemonMansion3F_TextPointers:

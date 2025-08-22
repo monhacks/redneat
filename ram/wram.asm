@@ -496,10 +496,13 @@ wPlayerMonMinimized:: db
 
 	ds 13
 
-; number of hits by enemy in attacks like Double Slap, etc.
-wEnemyNumHits:: ; db
+UNION
 ; the amount of damage accumulated by the enemy while biding
 wEnemyBideAccumulatedDamage:: dw
+NEXTU
+; number of hits by enemy in attacks like Double Slap, etc.
+wEnemyNumHits:: db
+ENDU
 
 	ds 8
 wMiscBattleDataEnd::
@@ -876,16 +879,29 @@ wDownscaledMonSize::
 wNumMovesMinusOne:: db
 
 UNION
-wcd6d:: ds NAME_BUFFER_LENGTH ; buffer for various data
+; storage buffer for various name strings
+wNameBuffer:: ds NAME_BUFFER_LENGTH
 
 NEXTU
-	ds 4
-; temp variable used to print a move's current PP on the status screen
+; data copied from Moves for one move
+wMoveData:: ds MOVE_LENGTH
+wPPUpCountAndMaxPP:: db
+
+NEXTU
+; amount of money made from one use of Pay Day
+wPayDayMoney:: ds 3
+
+NEXTU
+; evolution data for one mon
+wEvoDataBuffer:: ds 4 * 3 + 1 ; enough for Eevee's three 4-byte evolutions and 0 terminator
+
+NEXTU
+wBattleMenuCurrentPP:: db
+	ds 3
 wStatusScreenCurrentPP:: db
 	ds 6
 ; list of normal max PP (without PP up) values
 wNormalMaxPPList:: ds NUM_MOVES
-	ds 5
 ENDU
 
 UNION
@@ -964,7 +980,7 @@ wBoughtOrSoldItemInMart:: db
 ; $02 - draw
 wBattleResult:: db
 
-; bit 0: if set, DisplayTextID automatically draws a text box
+; bit 0: if set, prevents DisplayTextID from automatically drawing a text box
 wAutoTextBoxDrawingControl:: db
 
 ; used in some overworld scripts to vary scripted movement
@@ -1061,7 +1077,10 @@ wUnusedNamePointer:: dw
 
 wItemPrices:: dw
 
-wcf91:: db ; used with a lot of things (too much to list here)
+wCurPartySpecies::
+wCurItem::
+wCurListMenuItem::
+	db
 
 ; which pokemon you selected
 wWhichPokemon:: db
@@ -1474,8 +1493,10 @@ wSpriteDecodeTable0Ptr:: dw
 ; pointer to differential decoding table (assuming initial value 1)
 wSpriteDecodeTable1Ptr:: dw
 
-wd0b5:: db ; used as a temp storage area for Pokemon Species, and other Pokemon/Battle related things
-
+; input for GetMonHeader
+wCurSpecies::
+; input for GetName
+wNameListIndex:: db
 wNameListType:: db
 
 wPredefBank:: db
@@ -1540,19 +1561,22 @@ wCapturedMonSpecies:: db
 ; which will be the first mon sent out.
 wFirstMonsNotOutYet:: db
 
+wNamedObjectIndex::
+wTempByteValue::
+wNumSetBits::
+wTypeEffectiveness::
+wMoveType::
+wPokedexNum::
+wTempTMHM::
+wUsingPPUp::
+wMaxPP::
+wMoveGrammar::
+; 0 for player, non-zero for enemy
+wCalculateWhoseStats::
 wPokeBallCaptureCalcTemp::
 ; lower nybble: number of shakes
 ; upper nybble: number of animations to play
 wPokeBallAnimData::
-wUsingPPUp::
-wMaxPP::
-; 0 for player, non-zero for enemy
-wCalculateWhoseStats::
-wTypeEffectiveness::
-wMoveType::
-wNumSetBits::
-; used as a Pokemon and Item storage value. Also used as an output value for CountSetBits
-wd11e::
 	db
 
 ; When this value is non-zero, the player isn't allowed to exit the party menu
@@ -1572,7 +1596,10 @@ wIsKeyItem:: db
 
 wTextBoxID:: db
 
-wCurrentMapScriptFlags:: db ; not exactly sure what this is used for, but it seems to be used as a multipurpose temp flag value
+; bit 5: set when maps first load; can be reset to re-run a script
+; bit 6: set when maps first load; can be reset to re-run a script (used less often than bit 5)
+; bit 7: set when using an elevator map's menu; triggers the shaking animation
+wCurrentMapScriptFlags:: db
 
 wCurEnemyLevel:: db
 
@@ -1725,7 +1752,7 @@ wOptions:: db
 
 wObtainedBadges:: flag_array NUM_BADGES
 
-	ds 1
+wUnusedObtainedBadges:: db
 
 wLetterPrintingDelayFlags:: db
 
@@ -2119,7 +2146,7 @@ wSerialEnemyDataBlock:: ; ds $1a8
 
 	ds 9
 
-wEnemyPartyCount:: ds 1
+wEnemyPartyCount:: db
 wEnemyPartySpecies:: ds PARTY_LENGTH + 1
 
 wEnemyMons::

@@ -7,7 +7,7 @@ StoreTrainerHeaderPointer::
 	ret
 
 ; executes the current map script from the function pointer array provided in de.
-; a: map script index to execute (unless overridden by [wd733] bit 4)
+; a: map script index to execute (unless overridden by [wStatusFlags7] BIT_USE_CUR_MAP_SCRIPT)
 ; hl: trainer header pointer
 ExecuteCurMapScriptInTable::
 	push af
@@ -165,7 +165,7 @@ DisplayEnemyTrainerTextAndStartBattle::
 	ret nz ; return if the enemy trainer hasn't finished walking to the player's sprite
 	ld [wJoyIgnore], a
 	ld a, [wSpriteIndex]
-	ldh [hSpriteIndexOrTextID], a
+	ldh [hSpriteIndex], a
 	call DisplayTextID
 	; fall through
 
@@ -184,8 +184,8 @@ StartTrainerBattle::
 
 EndTrainerBattle::
 	ld hl, wCurrentMapScriptFlags
-	set 5, [hl]
-	set 6, [hl]
+	set BIT_CUR_MAP_LOADED_1, [hl]
+	set BIT_CUR_MAP_LOADED_2, [hl]
 	ld hl, wStatusFlags3
 	res BIT_PRINT_END_BATTLE_TEXT, [hl]
 	ld hl, wMiscFlags
@@ -358,7 +358,7 @@ PrintEndBattleText::
 	pop af
 	ldh [hLoadedROMBank], a
 	ld [MBC1RomBank], a
-	farcall FreezeEnemyTrainerSprite
+	farcall SetEnemyTrainerToStayAndFaceAnyDirection
 	jp WaitForSoundToFinish
 
 GetSavedEndBattleTextPointer::

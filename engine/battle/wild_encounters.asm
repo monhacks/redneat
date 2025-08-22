@@ -76,7 +76,7 @@ TryDoWildEncounter:
 	ld a, [hli]
 	ld [wCurEnemyLevel], a
 	ld a, [hl]
-	ld [wcf91], a
+	ld [wCurPartySpecies], a
 	ld [wEnemyMonSpecies2], a
 	ld a, [wRepelRemainingSteps]
 	and a
@@ -90,7 +90,7 @@ TryDoWildEncounter:
 .lastRepelStep
 	ld [wRepelRemainingSteps], a
 	ld a, TEXT_REPEL_WORE_OFF
-	ldh [hSpriteIndexOrTextID], a
+	ldh [hTextID], a
 	call EnableAutoTextBoxDrawing
 	call DisplayTextID
 .CantEncounter2
@@ -100,5 +100,33 @@ TryDoWildEncounter:
 .willEncounter
 	xor a
 	ret
+
+; Wild Pokémon AI: Selects the best move based on effectiveness and strategy
+WildAIMoveSelection:
+    ; Prioritize effective moves
+    ld hl, wEnemyMonMoves
+    ld b, NUM_MOVES
+    .nextMove:
+        dec b
+        ret z ; Exit if no more moves
+        ld a, [hl]
+        cp 0
+        jr z, .skipMove ; Skip empty slots
+        call ReadMove
+        callfar AIGetTypeEffectiveness
+        ld a, [wTypeEffectiveness]
+        cp $20
+        jr nc, .EncourageMove
+        inc d ; Discourage ineffective moves
+        jr .EvaluateNext
+    .EncourageMove:
+        dec d ; Encourage effective moves
+    .EvaluateNext:
+        inc hl
+        jr .nextMove
+    .skipMove:
+        inc hl
+        jr .nextMove
+
 
 INCLUDE "data/wild/probabilities.asm"
